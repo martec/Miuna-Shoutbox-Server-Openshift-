@@ -39,9 +39,11 @@ require('./config/passport')(passport); // pass passport for configuration
 // set up our express application
 
 User.findOne({'local.check': '1'}).exec(function(err, docs){
-	whitelist = docs.local.origin;
-	secret_st = docs.local.spku;
-	chrlimit = docs.local.chrlimit;
+	if (docs) {
+		whitelist = docs.local.origin;
+		secret_st = docs.local.spku;
+		chrlimit = docs.local.chrlimit;
+	}
 });
 
 var corsOptions = {
