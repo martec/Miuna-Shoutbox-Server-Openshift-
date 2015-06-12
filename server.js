@@ -180,7 +180,27 @@ app.post('/newposthread', function(req, res){
 	});
 });
 
-// socket.io ======================================================================
+// socket.io guest ===========================================================
+
+var nspg = io.of('/guest');
+nspg.on('connection', function(nspsocket){
+	nspsocket.on('getnot', function(data){
+		db.getnoti(function(err, docs){
+			nspsocket.emit('getnot', docs);
+		});
+	});
+	nspsocket.on('getoldmsg', function(data){
+		db.getOldMsgsGuest(data, function(err, docs){
+			nspsocket.emit('load old msgs', docs);
+		});
+	});
+});
+
+exports.guestnewpost = function(docs) {
+	nspg.emit('message', docs);
+};
+
+// socket.io member ===========================================================
 
 var secret = '';
 
@@ -191,35 +211,37 @@ User.findOne({'local.check': '1'}).exec(function(err, docs){
 	start(secret);
 });
 
+var nspm = io.of('/member');
 function start(secret) {
-	io.sockets.on('connection', socketio_jwt.authorize({
+	nspm.on('connection', socketio_jwt.authorize({
 		secret: secret,
 		timeout: 15000 // 15 seconds to send the authentication message
-		})).on('authenticated', function(socket) {
-			socket.on('ckusr', function (data) {
-				if (data.uid==socket.decoded_token.uid) {
-					db.c_oneusr(data, function(err, docs){
-						if(docs) {
-							if(docs.ban=='1') {
-								io.to(socket.id).emit('ckusr', 'banned');
-								socket.disconnect();
-							}
-							else {
-								io.to(socket.id).emit('ckusr', 'ok');
-								initializeConnection(socket);
-							}
+	}));
+	io.sockets.on('authenticated', function(socket) {
+		socket.on('ckusr', function (data) {
+			if (data.uid==socket.decoded_token.uid) {
+				db.c_oneusr(data, function(err, docs){
+					if(docs) {
+						if(docs.ban=='1') {
+							nspm.to(socket.id).emit('ckusr', 'banned');
+							socket.disconnect();
 						}
 						else {
-							io.to(socket.id).emit('ckusr', 'ok');
+							nspm.to(socket.id).emit('ckusr', 'ok');
 							initializeConnection(socket);
 						}
-					});
-				}
-				else {
-					io.to(socket.id).emit('ckusr', 'disconnect');
-					socket.disconnect();
-				}
-			});
+					}
+					else {
+						nspm.to(socket.id).emit('ckusr', 'ok');
+						initializeConnection(socket);
+					}
+				});
+			}
+			else {
+				nspm.to(socket.id).emit('ckusr', 'disconnect');
+				socket.disconnect();
+			}
+		});
 	});
 }
 
@@ -297,7 +319,7 @@ function handleupdnot(socket){
 	socket.on('updnot', function(data){
 		if (socket.decoded_token.mod=='1') {
 			db.updnoti(data);
-			io.emit('updnot', xss(data));
+			nspm.emit('updnot', xss(data));
 		}
 	});
 }
@@ -315,7 +337,7 @@ function handleupdmsg(socket){
 		data["tk_uid"] = socket.decoded_token.uid;
 		data["tk_mod"] = socket.decoded_token.mod;
 		db.updmsg(data, function(err, docs){
-			io.emit('updmsg', docs);
+			nspm.emit('updmsg', docs);
 		});
 	});
 }
@@ -326,7 +348,7 @@ function handlermvmsg(socket){
 		data["tk_mod"] = socket.decoded_token.mod;
 		db.rmvmsg(data, function(err, docs){
 			if (docs) {
-				io.emit('rmvmsg', data);
+				nspm.emit('rmvmsg', data);
 			}
 		});
 	});
@@ -336,7 +358,7 @@ function handlepurge(socket){
 	socket.on('purge', function(data){
 		if (socket.decoded_token.mod=='1') {
 			db.purge();
-			io.emit('purge');
+			nspm.emit('purge');
 		}
 	});
 }
@@ -390,7 +412,7 @@ function handleupdbanl(socket){
 		if (socket.decoded_token.mod=='1') {
 			db.updbanl(data, function(err, docs){
 				if (docs.ban=='1') {
-					io.to(docs.id).emit('ban', 'disconnect');
+					nspm.to(docs.id).emit('ban', 'disconnect');
 				}
 			});
 		}
@@ -413,7 +435,7 @@ function handleMessageBroadcasting(socket){
 		}
 		if (allowance < 1.0) {
 			//discard message and disconnect
-			io.to(socket.id).emit('abuse', 'abuse');
+			nspm.to(socket.id).emit('abuse', 'abuse');
 			socket.disconnect();
 		}
 		else {
@@ -426,13 +448,13 @@ function handleMessageBroadcasting(socket){
 			data["tk_suid"] = ''+socket.decoded_token.uid+','+data.uidto+'';
 			if (data.msg.length<=parseInt(chrlimit)) {
 				db.saveMsg(data, function(err, docs){
-					io.emit('message', docs);
+					nspm.emit('message', docs);
 				});
 			}
 			else {
 				data["msg"] = data.msg.slice(0, parseInt(chrlimit));
 				db.saveMsg(data, function(err, docs){
-					io.emit('message', docs);
+					nspm.emit('message', docs);
 				});
 			}
 		}
@@ -440,7 +462,7 @@ function handleMessageBroadcasting(socket){
 }
 
 exports.emtnewpsthread = function(docs) {
-	io.emit('message', docs);
+	nspm.emit('message', docs);
 };
 
 function handleClientDisconnections(socket){
