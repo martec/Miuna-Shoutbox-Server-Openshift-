@@ -2,19 +2,33 @@
 <!doctype html>
 <html>
 <head>
-	<title>Miuna Shoutbox Server 3.2 ACP</title>
+	<title>Miuna Shoutbox Server 3.5 ACP</title>
 	<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.min.css">
 	<link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css">
 	<style>
 		body		{ padding-top:80px; word-wrap:break-word; }
 	</style>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script> 
 </head>
 <body>
 <div class="container">
 
-	<div class="text-center">
-		<h1>Miuna Shoutbox Server 3.2 Successfully Configured!</h1>
+	<div class="jumbotron text-center">
+		<h2>Miuna Shoutbox Server 3.5 Successfully Configured!</h2>
+
+		<div>Miuna Shoutbox Server Link: <span id='link'></span></div>
+		<div>Miuna Shoutbox Socket.io address: <span id='ioadd'></span><div>
+		
+		<h2>Do not forget to restart the application once again.</h2>
+		<script type="text/javascript">
+			link = 'https://'+window.location.hostname+'';
+			socket = 'wss://'+window.location.hostname+':8443';
+			$('#link').append(link);
+			$('#ioadd').append(socket);
+		</script>
 	</div>
+	
+	<p>Return to <a href="https://openshift.redhat.com/app/console/applications">Openshift</a>.</p>
 
 </div>
 </body>

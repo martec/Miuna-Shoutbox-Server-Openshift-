@@ -1,10 +1,11 @@
 // config/passport.js
 
 // load all the things we need
-var LocalStrategy	= require('passport-local').Strategy;
+var LocalStrategy = require('passport-local').Strategy;
 
 // load up the user model
-var User			= require('../lib/user');
+var User = require('../lib/user');
+var url = require('url');
 
 // expose this function to our app using module.exports
 module.exports = function(passport) {
@@ -43,12 +44,15 @@ module.exports = function(passport) {
 			if (docs==0) {
 				// create the user
 				var newUser = new User();
+				
+				domain = url.parse(req.body.origin).hostname.replace("www.","");
+				origin = 'http://'+domain+', https://'+domain+', http://www.'+domain+', https://www.'+domain+'';
 
 				// set the user's local credentials
 				newUser.local.user = user;
 				newUser.local.password = newUser.generateHash(password); // use the generateHash function in our user model
 				newUser.local.spku = req.body.secret;
-				newUser.local.origin = [req.body.origin.split(',')];
+				newUser.local.origin = [origin];
 				newUser.local.chrlimit = req.body.chrlimit;
 				newUser.local.check = '1';
 
