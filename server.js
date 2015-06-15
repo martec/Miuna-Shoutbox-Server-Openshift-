@@ -465,6 +465,15 @@ exports.emtnewpsthread = function(docs) {
 	nspm.emit('message', docs);
 };
 
+exports.pmcheck = function(docs) {
+	db.c_oneusr(docs, function(err, data){
+		nspm.to(data.id).emit('message', docs);
+	});	
+	db.c_oneusr2(docs, function(err, data){
+		nspm.to(data.id).emit('message', docs);
+	});	
+};
+
 function handleClientDisconnections(socket){
 	socket.on('disconnect', function () {
 		delete usernames[socket.uid];
