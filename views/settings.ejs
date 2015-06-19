@@ -2,7 +2,7 @@
 <!doctype html>
 <html>
 <head>
-	<title>Miuna Shoutbox Server 3.6 ACP</title>
+	<title>Miuna Shoutbox Server 3.7 ACP</title>
 	<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.min.css"> <!-- load bootstrap css -->
 	<link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css"> <!-- load fontawesome -->
 	<style>
@@ -16,11 +16,6 @@
 <div class="col-sm-6 col-sm-offset-3">
 
 	<h1><span class="fa fa-sign-in"></span> Settings</h1>
-
-	<!-- show any messages that come back with authentication -->
-	<% if (message.length > 0) { %>
-		<div class="alert alert-danger"><%= message %></div>
-	<% } %>
 
 	<!-- LOGIN FORM -->
 	<form id="settings" action="/settings" method="post">
