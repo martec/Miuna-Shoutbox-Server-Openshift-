@@ -83,12 +83,12 @@ function startall() {
 		res.render('sucess.ejs'); // load the index.ejs file
 	});
 
-	app.post('/registeruser', function(req, res){
+	app.post('/gettoken', function(req, res){
 		User.findOne({ 'local.user' : auth(req).name }, function(err, data) {
 			if (data) {
 				if (bcrypt.compareSync(auth(req).pass, data.local.password)) {
-					db.regusr(req);
-					res.send({sucess: 'sucess'});
+					var token = jwt.sign(req.body, secret_st, { expiresInMinutes: 60*5 });
+					res.send({token: token});
 					res.end();
 				}
 				else {
@@ -98,26 +98,6 @@ function startall() {
 			}
 			else {
 				res.send({error: 'admusarinc'});
-				res.end();
-			}
-		});
-	});
-
-	app.post('/login', function(req, res){
-		db.logusr(req.body, function(err, data){
-			if (data) {
-				if (bcrypt.compareSync(req.body.pass, data.local.password)) {
-					var token = jwt.sign(data.local, secret_st, { expiresInMinutes: 60*5 });
-					res.send({token: token});
-					res.end();
-				}
-				else {
-					res.send({error: 'incpassword'});
-					res.end();
-				}
-			}
-			else {
-				res.send({error: 'usrnotfound'});
 				res.end();
 			}
 		});
