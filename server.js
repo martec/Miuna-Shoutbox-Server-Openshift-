@@ -24,7 +24,7 @@ var socketio_jwt = require('socketio-jwt');
 var usernames = {};
 var uidlist = {};
 var dbcredential = process.env.OPENSHIFT_MONGODB_DB_URL;
-var dbname = 'miunashout';
+var dbname = process.env.OPENSHIFT_APP_NAME;
 var url = dbcredential + dbname;
 
 // initialize db ===============================================================
@@ -183,28 +183,20 @@ function startall() {
 		timeout: 15000 // 15 seconds to send the authentication message
 	}));
 	io.sockets.on('authenticated', function(socket) {
-		socket.on('ckusr', function (data) {
-			if (data.uid==socket.decoded_token.uid) {
-				db.c_oneusr(data, function(err, docs){
-					if(docs) {
-						if(docs.ban=='1') {
-							nspm.to(socket.id).emit('ckusr', 'banned');
-							socket.disconnect();
-						}
-						else {
-							nspm.to(socket.id).emit('ckusr', 'ok');
-							initializeConnection(socket);
-						}
-					}
-					else {
-						nspm.to(socket.id).emit('ckusr', 'ok');
-						initializeConnection(socket);
-					}
-				});
+		db.c_oneusr(socket.decoded_token, function(err, docs){
+			if(docs) {
+				if(docs.ban=='1') {
+					nspm.to(socket.id).emit('ckusr', 'banned');
+					socket.disconnect();
+				}
+				else {
+					nspm.to(socket.id).emit('ckusr', 'ok');
+					initializeConnection(socket);
+				}
 			}
 			else {
-				nspm.to(socket.id).emit('ckusr', 'disconnect');
-				socket.disconnect();
+				nspm.to(socket.id).emit('ckusr', 'ok');
+				initializeConnection(socket);
 			}
 		});
 	});
