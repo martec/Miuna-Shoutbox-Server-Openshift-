@@ -2,7 +2,7 @@
 <!doctype html>
 <html>
 <head>
-	<title>Miuna Shoutbox Server 5.4 ACP</title>
+	<title>Miuna Shoutbox Server 6.0 ACP</title>
 	<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.min.css"> <!-- load bootstrap css -->
 	<link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css"> <!-- load fontawesome -->
 	<style>
@@ -20,16 +20,8 @@
 	<!-- LOGIN FORM -->
 	<form id="settings" action="/settings" method="post">
 		<div class="form-group">
-			<label>User Name</label>
-			<input type="text" class="form-control" name="user" id="user" required>
-		</div>
-		<div class="form-group">
-			<label>Password</label>
-			<input type="password" class="form-control" name="password" id="pass" required>
-		</div>
-		<div class="form-group">
-			<label>Secret or Public Key</label>
-			<input type="text" class="form-control" name="secret" id="secret" required>
+			<label>Secret</label>
+			<input type="text" class="form-control" name="secret" id="secret" title="20 characters minimum" pattern=".{20,}" required>
 		</div>
 		<div class="form-group">
 			<label>Character limit in shout (Recommended 700 or less)</label>
@@ -44,11 +36,12 @@
 		<script type="text/javascript">
 			$('#settings').submit(function()
 			{
-				if ($.trim($("#user").val()) === "" || $.trim($("#pass").val()) === "" || $.trim($("#secret").val()) === ""	 || $.trim($("#chrlimit").val()) === "" || $.trim($("#origin").val()) === "") {
+				if ($.trim($("#secret").val()) === "" || $.trim($("#chrlimit").val()) === "" || $.trim($("#origin").val()) === "") {
 					alert('Error: All fields are required.');
 					return false;
 				}
 			});
+			document.getElementById('secret').value = <%- token %>; 
 		</script>
 	</form>
 

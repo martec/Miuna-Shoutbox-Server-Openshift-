@@ -4,18 +4,17 @@
 // get all the tools we need
 var express = require('express');
 var cors = require('cors');
+var crypto = require('crypto');
 var app = express();
 var	port = process.env.OPENSHIFT_NODEJS_PORT;
 var	ip = process.env.OPENSHIFT_NODEJS_IP;
 var mongoose = require('mongoose');
-var passport = require('passport');
 var bodyParser = require('body-parser');
 var jwt = require('jsonwebtoken');
-var auth = require('basic-auth');
 var socketio = require('socket.io');
-var User = require('./lib/user');
+var confdb = require('./lib/config-db.js');
+var conf = require('./lib/config.js');
 var db = require('./lib/miunashout-db');
-var bcrypt = require('bcrypt-nodejs');
 var whitelist = [];
 var secret_st = '';
 var chrlimit = '';
@@ -23,6 +22,7 @@ var xss = require('node-xss').clean;
 var socketio_jwt = require('socketio-jwt');
 var usernames = {};
 var uidlist = {};
+var id = {};
 var dbcredential = process.env.OPENSHIFT_MONGODB_DB_URL;
 var dbname = process.env.OPENSHIFT_APP_NAME;
 var url = dbcredential + dbname;
@@ -31,15 +31,13 @@ var url = dbcredential + dbname;
 
 mongoose.connect(url); // connect to our database
 
-require('./config/passport')(passport); // pass passport for configuration
-
 // set up our express application
 
-User.findOne({'local.check': '1'}).exec(function(err, docs){
+confdb.findOne({'check': '1'}).exec(function(err, docs){
 	if (docs) {
-		whitelist = docs.local.origin;
-		secret_st = docs.local.spku;
-		chrlimit = docs.local.chrlimit;
+		whitelist = docs.origin;
+		secret_st = docs.spku;
+		chrlimit = docs.chrlimit;
 	}
 	startall();
 });
@@ -61,9 +59,6 @@ function startall() {
 
 	app.set('view engine', 'ejs'); // set up ejs for templating
 
-	// required for passport
-	app.use(passport.initialize());
-
 	// launch ======================================================================
 	var server = app.listen(port, ip);
 	var io = socketio.listen(server);
@@ -74,33 +69,11 @@ function startall() {
 	// HOME PAGE (with login links) ========
 	// =====================================
 	app.get('/', function(req, res) {
-		req.logout();
 		res.render('index.ejs'); // load the index.ejs file
 	});
 
 	app.get('/sucess', function(req, res) {
-		req.logout();
 		res.render('sucess.ejs'); // load the index.ejs file
-	});
-
-	app.post('/gettoken', function(req, res){
-		User.findOne({ 'local.user' : auth(req).name }, function(err, data) {
-			if (data) {
-				if (bcrypt.compareSync(auth(req).pass, data.local.password)) {
-					var token = jwt.sign(req.body, secret_st, { expiresInMinutes: 60*5 });
-					res.send({token: token});
-					res.end();
-				}
-				else {
-					res.send({error: 'admpassinc'});
-					res.end();
-				}
-			}
-			else {
-				res.send({error: 'admusarinc'});
-				res.end();
-			}
-		});
 	});
 
 	// =====================================
@@ -110,9 +83,10 @@ function startall() {
 	app.get('/settings', function(req, res) {
 
 		// check if already configured, if not will go to signup page
-		User.find({}).count({}, function(err, docs){
+		confdb.find({}).count({}, function(err, docs){
 			if (docs==0) {
-				res.render('settings.ejs');
+				var token = crypto.randomBytes(25).toString('hex');
+				res.render('settings.ejs', {token: JSON.stringify(token)});
 			}
 			else {
 				res.redirect('/sucess');
@@ -121,35 +95,20 @@ function startall() {
 	});
 
 	// process the settings form
-	app.post('/settings', passport.authenticate('local-signup', {
-		session: false,
-		successRedirect : '/sucess', // redirect to the secure profile section
-		failureRedirect : '/settings' // redirect back to the signup page if there is an error
-	}));
-
-	// =====================================
-	// LOGOUT ==============================
-	// =====================================
-	app.get('/logout', function(req, res) {
-		req.logout();
-		res.redirect('/');
+	app.post('/settings', function(req, res) {
+		res.redirect('/sucess');
+		conf.saveconfig(req);
 	});
 
 	app.post('/newposthread', function(req, res){
-		User.findOne({ 'local.user' : auth(req).name }, function(err, data) {
-			if (data) {
-				if (bcrypt.compareSync(auth(req).pass, data.local.password)) {
-					db.saveMsgnp(req.body);
-					res.send({sucess: 'sucess'});
-					res.end();
-				}
-				else {
-					res.send({error: 'admpassinc'});
-					res.end();
-				}
+		jwt.verify(req.body.token, secret_st, function(err, decoded) {
+			if (decoded) {
+				db.saveMsgnp(req.body);
+				res.send({sucess: 'sucess'});
+				res.end();
 			}
 			else {
-				res.send({error: 'admusarinc'});
+				res.send({error: 'tokenerror'});
 				res.end();
 			}
 		});
@@ -178,11 +137,11 @@ function startall() {
 	// socket.io member ===========================================================
 
 	var nspm = io.of('/member');
-	nspm.on('connection', socketio_jwt.authorize({
+	nspm.use(socketio_jwt.authorize({
 		secret: secret_st,
-		timeout: 15000 // 15 seconds to send the authentication message
+		handshake: true
 	}));
-	io.sockets.on('authenticated', function(socket) {
+	nspm.on('connection', function(socket) {
 		db.c_oneusr(socket.decoded_token, function(err, docs){
 			if(docs) {
 				if(docs.ban=='1') {
@@ -222,27 +181,29 @@ function startall() {
 	}
 
 	function showActiveUsers(socket){
-		socket.on('add user', function (username) {
-			socket.uid = socket.decoded_token.uid;
-			uidlist[socket.uid] = 1;
-			username = socket.decoded_token.user;
-			socket.username = username;
-			usernames[socket.uid] = username;
-			socket.emit('login', {
-				usernames: usernames,
-				uidlist: uidlist
-			});
-			socket.broadcast.emit('user joined', {
-				usernames: usernames,
-				uidlist: uidlist,
-				uid: socket.uid
-			});
-			data = [];
-			data["nick"] = socket.decoded_token.user;
-			data["uid"] = socket.decoded_token.uid;
-			data["id"] = socket.id;
-			db.updpml(data);
+		socket.uid = socket.decoded_token.uid;
+		uidlist[socket.uid] = 1;
+		username = socket.decoded_token.user;
+		socket.username = username;
+		usernames[socket.uid] = username;
+		if (!id[socket.uid]) {
+			id[socket.uid]  = {};
+		}
+		id[socket.uid][socket.id] = 1;
+		socket.emit('login', {
+			usernames: usernames,
+			uidlist: uidlist
 		});
+		socket.broadcast.emit('user joined', {
+			usernames: usernames,
+			uidlist: uidlist,
+			uid: socket.uid
+		});
+		data = [];
+		data["nick"] = socket.decoded_token.user;
+		data["uid"] = socket.decoded_token.uid;
+		data["id"] = socket.id;
+		db.updpml(data);
 	}
 
 	function handleshowOldMsgs(socket){
@@ -424,22 +385,25 @@ function startall() {
 	exports.pmcheck = function(docs) {
 		db.c_oneusr(docs, function(err, data){
 			nspm.to(data.id).emit('message', docs);
-		});	
+		});
 		db.c_oneusr2(docs, function(err, data){
 			nspm.to(data.id).emit('message', docs);
-		});	
+		});
 	};
 
 	function handleClientDisconnections(socket){
 		socket.on('disconnect', function () {
-			delete usernames[socket.uid];
-			delete uidlist[socket.uid];
+			delete id[socket.uid][socket.id];
+			if (!Object.getOwnPropertyNames(id[socket.uid]).length) {
+				delete usernames[socket.uid];
+				delete uidlist[socket.uid];
 
-			socket.broadcast.emit('user left', {
-				usernames: usernames,
-				uidlist: uidlist,
-				uid: socket.uid
-			});
+				socket.broadcast.emit('user left', {
+					usernames: usernames,
+					uidlist: uidlist,
+					uid: socket.uid
+				});
+			}
 		});
 	}
 }
