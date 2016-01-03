@@ -253,6 +253,7 @@ function startall() {
 		socket.on('updmsg', function(data){
 			data["tk_uid"] = socket.decoded_token.uid;
 			data["tk_mod"] = socket.decoded_token.mod;
+			data["tk_eduser"] = socket.decoded_token.username;
 			db.updmsg(data, function(err, docs){
 				nspm.emit('updmsg', docs);
 			});
