@@ -23,6 +23,7 @@ var socketio_jwt = require('socketio-jwt');
 var usernames = {};
 var uidlist = {};
 var id = {};
+var msgtime = {};
 var dbcredential = process.env.OPENSHIFT_MONGODB_DB_URL;
 var dbname = process.env.OPENSHIFT_APP_NAME;
 var url = dbcredential + dbname;
@@ -187,8 +188,12 @@ function startall() {
 		socket.username = username;
 		usernames[socket.uid] = username;
 		if (!id[socket.uid]) {
-			id[socket.uid]  = {};
+			id[socket.uid] = {};
 		}
+		if (!msgtime[socket.uid]) {
+			msgtime[socket.uid] = [];
+		}
+		msgtime[socket.uid]['lpmsgt'] = 0;
 		id[socket.uid][socket.id] = 1;
 		socket.emit('login', {
 			usernames: usernames,
@@ -338,26 +343,9 @@ function startall() {
 	}
 
 	function handleMessageBroadcasting(socket){
-		//avoid abuse http://stackoverflow.com/a/668327
-		rate = 5.0;
-		per	 = 8.0;
-		allowance = rate;
-		last_check = Date.now()/1000;
 		socket.on('message', function(data){
-			current = Date.now()/1000;
-			time_passed = current - last_check;
-			last_check = current;
-			allowance += time_passed * (rate / per);
-			if (allowance > rate) {
-				allowance = rate;
-			}
-			if (allowance < 1.0) {
-				//discard message and disconnect
-				nspm.to(socket.id).emit('abuse', 'abuse');
-				socket.disconnect();
-			}
-			else {
-				allowance -= 1.0;
+			if ((parseInt((Date.now()/1000) - msgtime[socket.uid]['lpmsgt']) >= parseInt(socket.decoded_token.ftime)) || parseInt(socket.decoded_token.ftime) == 0) {
+				msgtime[socket.uid]['lpmsgt'] = Date.now()/1000;
 				data["created"] = Date.now();
 				data["tk_uid"] = socket.decoded_token.uid;
 				data["tk_nick"] = socket.decoded_token.user;
@@ -396,6 +384,7 @@ function startall() {
 		socket.on('disconnect', function () {
 			delete id[socket.uid][socket.id];
 			if (!Object.getOwnPropertyNames(id[socket.uid]).length) {
+				delete msgtime[socket.uid];
 				delete usernames[socket.uid];
 				delete uidlist[socket.uid];
 
