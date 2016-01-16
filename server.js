@@ -24,6 +24,7 @@ var usernames = {};
 var uidlist = {};
 var id = {};
 var msgtime = {};
+var badwl = {};
 var dbcredential = process.env.OPENSHIFT_MONGODB_DB_URL;
 var dbname = process.env.OPENSHIFT_APP_NAME;
 var url = dbcredential + dbname;
@@ -39,6 +40,9 @@ confdb.findOne({'check': '1'}).exec(function(err, docs){
 		whitelist = docs.origin;
 		secret_st = docs.spku;
 		chrlimit = docs.chrlimit;
+		if (docs.badwld) {
+			badwl = JSON.parse(docs.badwld);
+		}
 	}
 	startall();
 });
@@ -114,6 +118,31 @@ function startall() {
 			}
 		});
 	});
+	
+	app.post('/upbadwl', function(req, res){
+		jwt.verify(req.body.token, secret_st, function(err, decoded) {
+			if (decoded) {
+				badwl = {};
+				for (var val in req.body.badw) {
+					badwl[req.body.badw[val].badword] = req.body.badw[val].replacement;
+				}
+				confdb.findOneAndUpdate({'check': '1'}, { badwld: JSON.stringify(badwl) }, {upsert: false}).exec();
+				res.send({sucess: 'sucess'});
+				res.end();
+			}
+			else {
+				res.send({error: 'tokenerror'});
+				res.end();
+			}
+		});
+	});
+	
+	function badwordreplace(msg) {
+		for (var val in badwl) {
+			msg = msg.replace(new RegExp(''+val+'(?!\\S)', "gi"), badwl[val]);
+		}
+		return msg;
+	}
 
 	// socket.io guest ===========================================================
 
@@ -240,6 +269,7 @@ function startall() {
 	function handleupdnot(socket){
 		socket.on('updnot', function(data){
 			if (socket.decoded_token.mod=='1') {
+				data["not"] = badwordreplace(data.not);
 				db.updnoti(data);
 				nspm.emit('updnot', xss(data));
 			}
@@ -259,6 +289,10 @@ function startall() {
 			data["tk_uid"] = socket.decoded_token.uid;
 			data["tk_mod"] = socket.decoded_token.mod;
 			data["tk_eduser"] = socket.decoded_token.username;
+			if (data.msg.length>parseInt(chrlimit)) {
+				data["msg"] = data.msg.slice(0, parseInt(chrlimit));
+			}
+			data["msg"] = badwordreplace(data.msg);
 			db.updmsg(data, function(err, docs){
 				nspm.emit('updmsg', docs);
 			});
@@ -352,17 +386,13 @@ function startall() {
 				data["tk_avatar"] = socket.decoded_token.avatar;
 				data["tk_gid"] = socket.decoded_token.gid;
 				data["tk_suid"] = ''+socket.decoded_token.uid+','+data.uidto+'';
-				if (data.msg.length<=parseInt(chrlimit)) {
-					db.saveMsg(data, function(err, docs){
-						nspm.emit('message', docs);
-					});
-				}
-				else {
+				if (data.msg.length>parseInt(chrlimit)) {
 					data["msg"] = data.msg.slice(0, parseInt(chrlimit));
-					db.saveMsg(data, function(err, docs){
-						nspm.emit('message', docs);
-					});
 				}
+				data["msg"] = badwordreplace(data.msg);
+				db.saveMsg(data, function(err, docs){
+					nspm.emit('message', docs);
+				});
 			}
 		});
 	}
