@@ -99,6 +99,13 @@ function startall() {
 		});
 	});
 
+	function badwordreplace(msg) {
+		for (var val in badwl) {
+			msg = msg.replace(new RegExp('(^|\\W)'+val+'((?!\\S)|\\W|$)', "gi"), badwl[val]);
+		}
+		return msg;
+	}
+
 	// process the settings form
 	app.post('/settings', function(req, res) {
 		res.redirect('/sucess');
@@ -108,6 +115,7 @@ function startall() {
 	app.post('/newposthread', function(req, res){
 		jwt.verify(req.body.token, secret_st, function(err, decoded) {
 			if (decoded) {
+				req.body["msg"] = badwordreplace(req.body.msg);
 				db.saveMsgnp(req.body);
 				res.send({sucess: 'sucess'});
 				res.end();
@@ -136,13 +144,6 @@ function startall() {
 			}
 		});
 	});
-	
-	function badwordreplace(msg) {
-		for (var val in badwl) {
-			msg = msg.replace(new RegExp(''+val+'(?!\\S)', "gi"), badwl[val]);
-		}
-		return msg;
-	}
 
 	// socket.io guest ===========================================================
 
@@ -289,10 +290,10 @@ function startall() {
 			data["tk_uid"] = socket.decoded_token.uid;
 			data["tk_mod"] = socket.decoded_token.mod;
 			data["tk_eduser"] = socket.decoded_token.username;
-			if (data.msg.length>parseInt(chrlimit)) {
-				data["msg"] = data.msg.slice(0, parseInt(chrlimit));
+			if (data.newmsg.length>parseInt(chrlimit)) {
+				data["newmsg"] = data.newmsg.slice(0, parseInt(chrlimit));
 			}
-			data["msg"] = badwordreplace(data.msg);
+			data["newmsg"] = badwordreplace(data.newmsg);
 			db.updmsg(data, function(err, docs){
 				nspm.emit('updmsg', docs);
 			});
