@@ -99,13 +99,6 @@ function startall() {
 		});
 	});
 
-	function badwordreplace(msg) {
-		for (var val in badwl) {
-			msg = msg.replace(new RegExp('(^|\\W)'+val+'((?!\\S)|\\W|$)', "gi"), badwl[val]);
-		}
-		return msg;
-	}
-
 	// process the settings form
 	app.post('/settings', function(req, res) {
 		res.redirect('/sucess');
@@ -115,7 +108,6 @@ function startall() {
 	app.post('/newposthread', function(req, res){
 		jwt.verify(req.body.token, secret_st, function(err, decoded) {
 			if (decoded) {
-				req.body["msg"] = badwordreplace(req.body.msg);
 				db.saveMsgnp(req.body);
 				res.send({sucess: 'sucess'});
 				res.end();
@@ -144,6 +136,13 @@ function startall() {
 			}
 		});
 	});
+
+	function badwordreplace(msg) {
+		for (var val in badwl) {
+			msg = msg.replace(new RegExp(''+val+'(?!\\S)', "gi"), badwl[val]);
+		}
+		return msg;
+	}
 
 	// socket.io guest ===========================================================
 
