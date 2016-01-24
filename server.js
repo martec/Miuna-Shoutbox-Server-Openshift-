@@ -139,7 +139,7 @@ function startall() {
 
 	function badwordreplace(msg) {
 		for (var val in badwl) {
-			msg = msg.replace(new RegExp(''+val+'(?!\\S)', "gi"), badwl[val]);
+			msg = msg.replace(new RegExp('\\b'+val+'\\b', "gi"), badwl[val]);
 		}
 		return msg;
 	}
