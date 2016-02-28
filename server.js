@@ -180,18 +180,21 @@ function startall() {
 				}
 				else {
 					nspm.to(socket.id).emit('ckusr', 'ok');
-					initializeConnection(socket);
+					if (!docs.lstshout) {
+						docs.lstshout = 0;
+					}
+					initializeConnection(socket, docs.lstshout);
 				}
 			}
 			else {
 				nspm.to(socket.id).emit('ckusr', 'ok');
-				initializeConnection(socket);
+				initializeConnection(socket, 0);
 			}
 		});
 	});
 
-	function initializeConnection(socket){
-		showActiveUsers(socket);
+	function initializeConnection(socket, lstshout){
+		showActiveUsers(socket, lstshout);
 		handleClientDisconnections(socket);
 		handleshowOldMsgs(socket);
 		handleMessageBroadcasting(socket);
@@ -210,7 +213,7 @@ function startall() {
 		handlesgetpml(socket);
 	}
 
-	function showActiveUsers(socket){
+	function showActiveUsers(socket, lstshout){
 		socket.uid = socket.decoded_token.uid;
 		uidlist[socket.uid] = 1;
 		username = socket.decoded_token.user;
@@ -222,7 +225,7 @@ function startall() {
 		if (!msgtime[socket.uid]) {
 			msgtime[socket.uid] = [];
 		}
-		msgtime[socket.uid]['lpmsgt'] = 0;
+		msgtime[socket.uid]['lpmsgt'] = lstshout;
 		id[socket.uid][socket.id] = 1;
 		socket.emit('login', {
 			usernames: usernames,
@@ -288,6 +291,7 @@ function startall() {
 		socket.on('updmsg', function(data){
 			data["tk_uid"] = socket.decoded_token.uid;
 			data["tk_mod"] = socket.decoded_token.mod;
+			data["tk_edtp"] = socket.decoded_token.edtprv;
 			data["tk_eduser"] = socket.decoded_token.username;
 			if (data.newmsg.length>parseInt(chrlimit)) {
 				data["newmsg"] = data.newmsg.slice(0, parseInt(chrlimit));
@@ -303,6 +307,7 @@ function startall() {
 		socket.on('rmvmsg', function(data){
 			data["tk_uid"] = socket.decoded_token.uid;
 			data["tk_mod"] = socket.decoded_token.mod;
+			data["tk_edtp"] = socket.decoded_token.edtprv;
 			db.rmvmsg(data, function(err, docs){
 				if (docs) {
 					nspm.emit('rmvmsg', data);
@@ -414,6 +419,10 @@ function startall() {
 		socket.on('disconnect', function () {
 			delete id[socket.uid][socket.id];
 			if (!Object.getOwnPropertyNames(id[socket.uid]).length) {
+				data = [];
+				data["uid"] = socket.uid;
+				data["lstshout"] = msgtime[socket.uid]['lpmsgt'];
+				db.updlstshout(data);
 				delete msgtime[socket.uid];
 				delete usernames[socket.uid];
 				delete uidlist[socket.uid];
