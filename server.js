@@ -78,7 +78,7 @@ function startall() {
 	});
 
 	app.get('/sucess', function(req, res) {
-		res.render('sucess.ejs'); // load the index.ejs file
+		res.render('sucess.ejs'); // load the sucess.ejs file
 	});
 
 	// =====================================
