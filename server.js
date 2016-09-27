@@ -177,6 +177,7 @@ function startall() {
 				if(docs.ban=='1') {
 					nspm.to(socket.id).emit('ckusr', 'banned');
 					socket.disconnect();
+					return;
 				}
 				else {
 					nspm.to(socket.id).emit('ckusr', 'ok');
@@ -289,17 +290,24 @@ function startall() {
 
 	function handleupdmsg(socket){
 		socket.on('updmsg', function(data){
-			data["tk_uid"] = socket.decoded_token.uid;
-			data["tk_mod"] = socket.decoded_token.mod;
-			data["tk_edtp"] = socket.decoded_token.edtprv;
-			data["tk_eduser"] = socket.decoded_token.username;
-			if (data.newmsg.length>parseInt(chrlimit)) {
-				data["newmsg"] = data.newmsg.slice(0, parseInt(chrlimit));
+			if ((parseInt((Date.now()/1000) - msgtime[socket.uid]['lpmsgt']) >= parseInt(socket.decoded_token.ftime)) || parseInt(socket.decoded_token.ftime) == 0) {
+				msgtime[socket.uid]['lpmsgt'] = Date.now()/1000;			
+				data["tk_uid"] = socket.decoded_token.uid;
+				data["tk_mod"] = socket.decoded_token.mod;
+				data["tk_edtp"] = socket.decoded_token.edtprv;
+				data["tk_eduser"] = socket.decoded_token.username;
+				if (data.newmsg.length>parseInt(chrlimit)) {
+					data["newmsg"] = data.newmsg.slice(0, parseInt(chrlimit));
+				}
+				data["newmsg"] = badwordreplace(data.newmsg);
+				db.updmsg(data, function(err, docs){
+					if (docs) {
+						docs["msg"] = xss(data["newmsg"]);
+						docs["edtusr"] = data["tk_eduser"];
+					}
+					nspm.emit('updmsg', docs);
+				});
 			}
-			data["newmsg"] = badwordreplace(data.newmsg);
-			db.updmsg(data, function(err, docs){
-				nspm.emit('updmsg', docs);
-			});
 		});
 	}
 
