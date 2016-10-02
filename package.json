@@ -1,6 +1,6 @@
 {
   "name": "MiunaShoutboxServer",
-  "version": "9.0.0",
+  "version": "9.1.0",
   "description": "Server of Miuna shoutbox for Mybb",
   "dependencies" : {
 	"socket.io": "~1.4.8",
