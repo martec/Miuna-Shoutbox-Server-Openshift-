@@ -25,27 +25,33 @@ var uidlist = {};
 var id = {};
 var msgtime = {};
 var badwl = {};
-var dbcredential = process.env.OPENSHIFT_MONGODB_DB_URL;
-var dbname = process.env.OPENSHIFT_APP_NAME;
 var url = dbcredential + dbname;
 
 // initialize db ===============================================================
 
-mongoose.connect(url); // connect to our database
+var port = process.env.PORT || process.env.OPENSHIFT_NODEJS_PORT || 8080,
+ip = process.env.IP   || process.env.OPENSHIFT_NODEJS_IP || '0.0.0.0',
+url = process.env.url;
+
+if (url) {
+	mongoose.connect(url, {useMongoClient: true}); // connect to our database
+	start();
+}
 
 // set up our express application
-
-confdb.findOne({'check': '1'}).exec(function(err, docs){
-	if (docs) {
-		whitelist = docs.origin;
-		secret_st = docs.spku;
-		chrlimit = docs.chrlimit;
-		if (docs.badwld) {
-			badwl = JSON.parse(docs.badwld);
+function start() {
+	confdb.findOne({'check': '1'}).exec(function(err, docs){
+		if (docs) {
+			whitelist = docs.origin;
+			secret_st = docs.spku;
+			chrlimit = docs.chrlimit;
+			if (docs.badwld) {
+				badwl = JSON.parse(docs.badwld);
+			}
 		}
-	}
-	startall();
-});
+		startall();
+	});
+}
 
 function startall() {
 	var corsOptions = {

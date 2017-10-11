@@ -3,15 +3,14 @@
   "version": "9.2.0",
   "description": "Server of Miuna shoutbox for Mybb",
   "dependencies" : {
-	"socket.io": "~1.4.8",
-	"express" : "~4.14.0",
-	"ejs" : "~2.5.2",
-	"mongoose" : "~4.6.1",
-	"debug": "~2.2.0",
+	"socket.io": "~2.0.3",
+	"express": "~4.16.2",
+	"ejs" : "~2.5.7",
+	"mongoose": "~4.11.2",
 	"node-xss": "~0.0.1",
-	"body-parser" : "~1.15.2",
-	"jsonwebtoken" : "~7.1.9",
-	"cors": "~2.8.1",
+	"body-parser" : "~1.18.2",
+	"jsonwebtoken" : "~8.1.0",
+	"cors": "~2.8.4"
 	"xtend": "~4.0.1"
   }
 }
