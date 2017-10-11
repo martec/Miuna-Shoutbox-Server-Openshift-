@@ -6,8 +6,6 @@ var express = require('express');
 var cors = require('cors');
 var crypto = require('crypto');
 var app = express();
-var	port = process.env.OPENSHIFT_NODEJS_PORT;
-var	ip = process.env.OPENSHIFT_NODEJS_IP;
 var mongoose = require('mongoose');
 var bodyParser = require('body-parser');
 var jwt = require('jsonwebtoken');
@@ -25,7 +23,6 @@ var uidlist = {};
 var id = {};
 var msgtime = {};
 var badwl = {};
-var url = dbcredential + dbname;
 
 // initialize db ===============================================================
 
